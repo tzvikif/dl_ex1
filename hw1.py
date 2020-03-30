@@ -11,6 +11,9 @@ diff = 1
 num_epochs = 200
 lr= 0.001
 
+D_in,D_out = 50,1
+D_H1,D_H2,D_H3 = 50,200,100
+
 def get_num_weights(model):
     cnt = 0
     for w in model.parameters():
@@ -65,19 +68,21 @@ def get_data():
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(50, 50)
-        self.fc2 = nn.Linear(50, 100)
-        self.out = nn.Linear(100, 1)
+        self.fc1 = nn.Linear(D_in, D_H1)
+        self.fc2 = nn.Linear(D_H1, D_H2)
+        self.fc3 = nn.Linear(D_H2,D_H3)
+        self.out = nn.Linear(D_H3, D_out)
         self.out_act = nn.Sigmoid()
-
 
     def forward(self, input_):
         a1 = self.fc1(input_)
         h1 = F.relu(a1)
         a2 = self.fc2(h1)
         h2 = F.relu(a2)
-        a3 = self.out(h2)
-        y = self.out_act(a3)
+        a3 = self.fc3(h2)
+        h3 = F.relu(a3)
+        a4 = self.out(h3)
+        y = self.out_act(a4)
         return y
 
 
