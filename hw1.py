@@ -8,11 +8,11 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 diff = 1
-num_epochs = 200
-lr= 0.001
+num_epochs = 35
+lr= 0.05
 
 D_in,D_out = 50,1
-D_H1,D_H2,D_H3 = 50,800,100
+D_H1,D_H2,D_H3 = 500,500,200
 
 def get_num_weights(model):
     cnt = 0
