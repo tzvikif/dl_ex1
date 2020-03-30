@@ -8,9 +8,18 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 diff = 1
-num_epochs = 500
-lr= 0.01
+num_epochs = 200
+lr= 0.001
 
+def get_num_weights(model):
+    cnt = 0
+    for w in model.parameters():
+        l = list(w.size())
+        if len(l)==2:
+            cnt += list(w.size())[0]*list(w.size())[1]
+        else:
+            cnt += list(w.size())[0]
+    return cnt
 
 def torch_len(tensor):
     return list(tensor.size())[0]
@@ -118,4 +127,4 @@ acc = np.count_nonzero(ynp==pred)
 
 print("Number of Epochs: {}.".format(num_epochs))
 print("Model accuracy: {}%".format(acc))
-
+print(f'Number of Weights:{get_num_weights(net)}')
