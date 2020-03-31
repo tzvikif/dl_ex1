@@ -1,18 +1,28 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from torch.autograd import Variable
 import torch.optim as optim
 import torch.nn.functional as F
 
 import matplotlib.pyplot as plt
 
 diff = 1
-num_epochs = 35
-lr= 0.05
+num_epochs = 50
+lr= 0.03
 
 D_in,D_out = 50,1
-D_H1,D_H2,D_H3 = 500,500,200
+D_H1,D_H2,D_H3 = 800,800,200
+def Multiplot(l,xlabel,ylabel):
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    for p in l:
+        x = p['x']
+        y = p['y']
+        funcName = p['funcName']
+        plt.plot(x,y,label = funcName)
+        plt.legend()
+        plt.plot()
+    plt.show()
 
 def get_num_weights(model):
     cnt = 0
@@ -65,7 +75,7 @@ def get_data():
     return X,Y,test_X,test_Y
 
 
-class Net(nn.Module):
+class BaseNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.fc1 = nn.Linear(D_in, D_H1)
@@ -73,7 +83,26 @@ class Net(nn.Module):
         self.fc3 = nn.Linear(D_H2,D_H3)
         self.out = nn.Linear(D_H3, D_out)
         self.out_act = nn.Sigmoid()
-
+class NetTanh(BaseNet):
+    def __init__(self):
+        super().__init__()
+        
+    def forward(self, input_):
+        a1 = self.fc1(input_)
+        h1 = torch.tanh(a1)
+        #h1 = F.relu(a1)
+        a2 = self.fc2(h1)
+        #h2 = F.relu(a2)
+        h2 = torch.tanh(a2)
+        a3 = self.fc3(h2)
+        #h3 = F.relu(a3)
+        h3 = torch.tanh(a3)
+        a4 = self.out(h3)
+        y = self.out_act(a4)
+        return y
+class NetRelu(BaseNet):
+    def __init__(self):
+        super().__init__()    
     def forward(self, input_):
         a1 = self.fc1(input_)
         h1 = F.relu(a1)
@@ -84,9 +113,19 @@ class Net(nn.Module):
         a4 = self.out(h3)
         y = self.out_act(a4)
         return y
-
-
-
+class NetSigmoid(BaseNet):
+    def __init__(self):
+        super().__init__()        
+    def forward(self, input_):
+        a1 = self.fc1(input_)
+        h1 = torch.sigmoid(a1)
+        a2 = self.fc2(h1)
+        h2 = torch.sigmoid(a2)
+        a3 = self.fc3(h2)
+        h3 = torch.sigmoid(a3)
+        a4 = self.out(h3)
+        y = self.out_act(a4)
+        return y
 
 
 def train_epoch(model, opt, criterion, batch_size, X, Y):
@@ -95,7 +134,7 @@ def train_epoch(model, opt, criterion, batch_size, X, Y):
 
     model.zero_grad()
     # (1) Forward
-    y_out = net(X)
+    y_out = model(X)
     # (2) Compute diff
     loss = criterion(y_out, Y)
     # (3) Compute gradients
@@ -104,25 +143,42 @@ def train_epoch(model, opt, criterion, batch_size, X, Y):
     # (4) update weights
     for p in model.parameters():
         p.data -= p.grad.data * lr
+    detachedLoss = loss.detach()
+    return detachedLoss.item()
+def trainModel(model,num_epochs):
+    losses = []
+    for e in range(num_epochs):
+        curr_loss = train_epoch(model=model, opt=None, criterion=criterion, batch_size=50, X=X, Y=Y)
+        losses.append(curr_loss)
+    return losses
 
 
 
 
-net = Net()
+netRelu = NetRelu()
+netTanh = NetTanh()
+netSigmoid = NetSigmoid()
+
 criterion = nn.BCELoss()
 X,Y,X_test,Y_test = get_data()
 
 #train network
-for e in range(num_epochs):
-    train_epoch(model=net, opt=None, criterion=criterion, batch_size=50, X=X, Y=Y)
-
-
-net.eval()
+reluLosses = trainModel(model=netRelu,num_epochs=num_epochs)
+netRelu.eval()
+tanhLosses = trainModel(model=netTanh,num_epochs=num_epochs)
+netTanh.eval()
+sigmoidLosses = trainModel(model=netSigmoid,num_epochs=num_epochs)
+netSigmoid.eval()
 "Note: this notifies the network that it finished training. We don't actually need this line now," \
 "since our network is primitive, but it is nice to have good habits for future works"
-
+#plot losses
+x = np.arange(1,num_epochs+1)
+dRelu = {'x':x,'y':reluLosses,'funcName':'reluLosses'}
+dTanh = {'x':x,'y':tanhLosses,'funcName':'tanhLosses'}
+dSigmoid = {'x':x,'y':sigmoidLosses,'funcName':'sigmoidLosses'}
+Multiplot([dRelu,dTanh,dSigmoid],'#Epochs','Loss')
 #run test set
-out = net(X_test)
+out = netTanh(X_test)
 pred = torch.round(out).detach().numpy()
 
 #convert ground truth to numpy
@@ -132,4 +188,4 @@ acc = np.count_nonzero(ynp==pred)
 
 print("Number of Epochs: {}.".format(num_epochs))
 print("Model accuracy: {}%".format(acc))
-print(f'Number of Weights:{get_num_weights(net)}')
+print(f'Number of Weights:{get_num_weights(netRelu)}')
