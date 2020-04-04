@@ -3,16 +3,15 @@ import torch.nn as nn
 import numpy as np
 import torch.optim as optim
 import torch.nn.functional as F
-
 import matplotlib.pyplot as plt
 
 diff = 1
 num_epochs = 50
-lr= 0.03
-
+lr= 0.05
 D_in,D_out = 50,1
 D_H1,D_H2,D_H3 = 800,800,200
-def Multiplot(l,xlabel,ylabel):
+
+def Multiplot(l,xlabel,ylabel,title=''):
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     for p in l:
@@ -21,6 +20,7 @@ def Multiplot(l,xlabel,ylabel):
         funcName = p['funcName']
         plt.plot(x,y,label = funcName)
         plt.legend()
+        plt.title(title)
         plt.plot()
     plt.show()
 
@@ -36,8 +36,6 @@ def get_num_weights(model):
 
 def torch_len(tensor):
     return list(tensor.size())[0]
-
-
 def get_data():
     X1 = torch.randn(1000, 50)
     X2 = torch.randn(1000, 50) + diff
@@ -73,7 +71,6 @@ def get_data():
     print(test_Y.size())
 
     return X,Y,test_X,test_Y
-
 
 class BaseNet(nn.Module):
     def __init__(self):
@@ -126,11 +123,9 @@ class NetSigmoid(BaseNet):
         a4 = self.out(h3)
         y = self.out_act(a4)
         return y
-
-
-def train_epoch(model, opt, criterion, batch_size, X, Y):
+def train_epoch(model, opt, criterion, batch_size, X, Y,x_test,y_test):
     model.train()
-    losses = []
+    #losses = []
 
     model.zero_grad()
     # (1) Forward
@@ -144,48 +139,46 @@ def train_epoch(model, opt, criterion, batch_size, X, Y):
     for p in model.parameters():
         p.data -= p.grad.data * lr
     detachedLoss = loss.detach()
-    return detachedLoss.item()
+    y_test_out = model(x_test)
+    test_loss = criterion(y_test_out,y_test)
+    test_loss_detached = test_loss.detach()
+    return (detachedLoss.item(),test_loss_detached.item())
 def trainModel(model,num_epochs):
-    losses = []
+    trainLosses = []
+    testLosses = []
     for e in range(num_epochs):
-        curr_loss = train_epoch(model=model, opt=None, criterion=criterion, batch_size=50, X=X, Y=Y)
-        losses.append(curr_loss)
-    return losses
+        curr_loss = train_epoch(model=model, opt=None, criterion=criterion, batch_size=50,
+        X=X,
+        Y=Y,
+        x_test=X_test,
+        y_test=Y_test)
+        trainLosses.append(curr_loss[0])
+        testLosses.append(curr_loss[1])
+    return [trainLosses,testLosses]
+def testModel(model,x_test,y_test):
+    out = model(x_test)
+    pred = torch.round(out).detach().numpy()
+    #convert ground truth to numpy
+    ynp = y_test.data.numpy()
+    acc = np.count_nonzero(ynp==pred)
+    return acc
 
-
-
-
-netRelu = NetRelu()
 netTanh = NetTanh()
-netSigmoid = NetSigmoid()
-
 criterion = nn.BCELoss()
 X,Y,X_test,Y_test = get_data()
 
+tanhTestLosses = []
+tanhTrainLosses = []
 #train network
-reluLosses = trainModel(model=netRelu,num_epochs=num_epochs)
-netRelu.eval()
-tanhLosses = trainModel(model=netTanh,num_epochs=num_epochs)
+testTrainlosses = trainModel(model=netTanh,num_epochs=num_epochs)
 netTanh.eval()
-sigmoidLosses = trainModel(model=netSigmoid,num_epochs=num_epochs)
-netSigmoid.eval()
-"Note: this notifies the network that it finished training. We don't actually need this line now," \
-"since our network is primitive, but it is nice to have good habits for future works"
-#plot losses
-x = np.arange(1,num_epochs+1)
-dRelu = {'x':x,'y':reluLosses,'funcName':'reluLosses'}
-dTanh = {'x':x,'y':tanhLosses,'funcName':'tanhLosses'}
-dSigmoid = {'x':x,'y':sigmoidLosses,'funcName':'sigmoidLosses'}
-Multiplot([dRelu,dTanh,dSigmoid],'#Epochs','Loss')
-#run test set
-out = netTanh(X_test)
-pred = torch.round(out).detach().numpy()
 
-#convert ground truth to numpy
-ynp = Y_test.data.numpy()
+x = np.arange(1,len(testTrainlosses[0])+1)
+dtrainLosses = {'x':x,'y':testTrainlosses[0],'funcName':'Train losses'}
+dtestLosses = {'x':x,'y':testTrainlosses[1],'funcName':'Test losses'}
+Multiplot([dtrainLosses,dtestLosses],'#Epochs','Accuracy',title='Tanh')
 
-acc = np.count_nonzero(ynp==pred)
-
+acc = testModel(netTanh,X_test,Y_test)
 print("Number of Epochs: {}.".format(num_epochs))
 print("Model accuracy: {}%".format(acc))
-print(f'Number of Weights:{get_num_weights(netRelu)}')
+print(f'Number of Weights:{get_num_weights(netTanh)}')
