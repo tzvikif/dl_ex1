@@ -127,7 +127,7 @@ def train_epoch(model, opt, criterion, batch_size, X, Y,x_test,y_test):
     model.train()
     #losses = []
 
-    model.zero_grad()
+    opt.zero_grad()
     # (1) Forward
     y_out = model(X)
     # (2) Compute diff
@@ -136,18 +136,17 @@ def train_epoch(model, opt, criterion, batch_size, X, Y,x_test,y_test):
     loss.backward()
 
     # (4) update weights
-    for p in model.parameters():
-        p.data -= p.grad.data * lr
+    opt.step()
     detachedLoss = loss.detach()
     y_test_out = model(x_test)
     test_loss = criterion(y_test_out,y_test)
     test_loss_detached = test_loss.detach()
     return (detachedLoss.item(),test_loss_detached.item())
-def trainModel(model,num_epochs):
+def trainModel(model,num_epochs,opt):
     trainLosses = []
     testLosses = []
     for e in range(num_epochs):
-        curr_loss = train_epoch(model=model, opt=None, criterion=criterion, batch_size=50,
+        curr_loss = train_epoch(model=model, opt=opt, criterion=criterion, batch_size=50,
         X=X,
         Y=Y,
         x_test=X_test,
@@ -170,7 +169,8 @@ X,Y,X_test,Y_test = get_data()
 tanhTestLosses = []
 tanhTrainLosses = []
 #train network
-testTrainlosses = trainModel(model=netTanh,num_epochs=num_epochs)
+optimizer = torch.optim.Adam(params=netTanh.parameters(),lr=lr)
+testTrainlosses = trainModel(model=netTanh,num_epochs=num_epochs,opt=optimizer)
 netTanh.eval()
 
 x = np.arange(1,len(testTrainlosses[0])+1)
