@@ -12,7 +12,7 @@ lr= 0.03
 
 D_in,D_out = 50,1
 D_H1,D_H2,D_H3 = 800,800,200
-def Multiplot(l,xlabel,ylabel):
+def Multiplot(l,xlabel,ylabel,title=''):
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     for p in l:
@@ -21,6 +21,7 @@ def Multiplot(l,xlabel,ylabel):
         funcName = p['funcName']
         plt.plot(x,y,label = funcName)
         plt.legend()
+        plt.title(title)
         plt.plot()
     plt.show()
 
@@ -176,7 +177,7 @@ x = np.arange(1,num_epochs+1)
 dRelu = {'x':x,'y':reluLosses,'funcName':'reluLosses'}
 dTanh = {'x':x,'y':tanhLosses,'funcName':'tanhLosses'}
 dSigmoid = {'x':x,'y':sigmoidLosses,'funcName':'sigmoidLosses'}
-Multiplot([dRelu,dTanh,dSigmoid],'#Epochs','Loss')
+Multiplot([dRelu,dTanh,dSigmoid],'#Epochs','Loss','Actiavtion Functions')
 #run test set
 out = netTanh(X_test)
 pred = torch.round(out).detach().numpy()
